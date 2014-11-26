@@ -69,7 +69,11 @@ public class Transformer {
 
         // setup all matrices
         mMatrixValueToPx.reset();
+        // 将图表往下移mYChartMin，这样就不用显示最小值以下的空白区域了
         mMatrixValueToPx.postTranslate(0, -chart.getYChartMin());
+
+        // scaleX: 图表上的单位1代表多少个像素
+        // 为什么scaleY要加上负号，得结合prepareMatrixOffset来看
         mMatrixValueToPx.postScale(scaleX, -scaleY);
     }
 
@@ -85,6 +89,7 @@ public class Transformer {
         // offset.postTranslate(mOffsetLeft, getHeight() - mOffsetBottom);
 
         if (!mInvertYAxis)
+            // 为什么Y轴上要加上getHeight() - mOffsetBottom，画个图就明白了，图在有道笔记里
             mMatrixOffset.postTranslate(chart.getOffsetLeft(),
                     chart.getHeight() - chart.getOffsetBottom());
         else {
@@ -387,6 +392,32 @@ public class Transformer {
                 final float y = pts[1] - chart.getOffsetTop();
 
                 save.postTranslate(-x, -y);
+
+                refresh(save, chart);
+            }
+        });
+    }
+
+    // Siyi: Based on centerViewPort
+    public synchronized void showNPoints(final float[] pts, final float scaleX, final ChartInterface chart) {
+
+        final View v = chart.getChartView();
+
+        // the post makes it possible that this call waits until the view has
+        // finisted setting up
+        v.post(new Runnable() {
+
+            @Override
+            public void run() {
+                Matrix save = new Matrix();
+                save.set(mMatrixTouch);
+
+                pointValuesToPixel(pts);
+
+                final float x = -pts[0] + chart.getOffsetLeft();
+
+                save.postTranslate(x, 0);
+                save.postScale(scaleX / mScaleX, 1f);
 
                 refresh(save, chart);
             }

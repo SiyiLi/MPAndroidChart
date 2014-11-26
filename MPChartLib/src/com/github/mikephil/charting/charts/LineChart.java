@@ -3,6 +3,7 @@ package com.github.mikephil.charting.charts;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.util.AttributeSet;
@@ -231,7 +232,7 @@ public class LineChart extends BarLineChartBase<LineData> {
 
                         // make sure the lines don't do shitty things outside
                         // bounds
-                        if (j != 0 && isOffContentLeft(valuePoints[j - 1])
+                        if (j != 0 && isOffContentLeft(valuePoints[j - 1]) // j-1是y轴的数据吧？
                                 && isOffContentTop(valuePoints[j + 1])
                                 && isOffContentBottom(valuePoints[j + 1]))
                             continue;
@@ -338,10 +339,12 @@ public class LineChart extends BarLineChartBase<LineData> {
     protected void drawValues() {
 
         // if values are drawn
+        // 判断条件不太适用
         if (mDrawYValues && mData.getYValCount() < mMaxVisibleCount * mTrans.getScaleX()) {
 
             ArrayList<LineDataSet> dataSets = mData.getDataSets();
 
+            // 只用画dataSet0的数值
             for (int i = 0; i < mData.getDataSetCount(); i++) {
 
                 LineDataSet dataSet = dataSets.get(i);
@@ -529,5 +532,25 @@ public class LineChart extends BarLineChartBase<LineData> {
 
             return fillMin;
         }
+    }
+
+    public synchronized void showNPoints(final int num, final int xIndex) {
+
+        int i = xIndex;
+        if (xIndex == 0) {
+            if (valuesToHighlight()) {
+                i = mIndicesToHightlight[0].getXIndex();
+            } else if (mData != null && mData.getDataSets() != null) {
+                ArrayList<Entry> yVals = mData.getDataSets().get(0).getYVals();
+                i = yVals.get(yVals.size() - 1).getXIndex();
+            } else {
+                return;
+            }
+        }
+
+        float[] pts = new float[] { (float) (i - num) + 0.5f, 0 };
+
+        float scaleX = mDeltaX / num;
+        mTrans.showNPoints(pts, scaleX, this);
     }
 }

@@ -280,10 +280,13 @@ public abstract class Utils {
      * @return
      */
     public static float roundToNextSignificant(double number) {
+        // d: 代表是几位数
         final float d = (float) Math.ceil((float) Math.log10(number < 0 ? -number : number));
+        // pw: 4位数的话就是除以1000，只保留最高位
         final int pw = 1 - (int) d;
         final float magnitude = (float) Math.pow(10, pw);
         final long shifted = Math.round(number * magnitude);
+        // shifted: 4位数的话就是乘以1000
         return shifted / magnitude;
     }
 
@@ -296,7 +299,9 @@ public abstract class Utils {
      */
     public static int getDecimals(float number) {
 
+        // 将number保留1位有效数字，例如0.00835，结果为0.008
         float i = roundToNextSignificant(number);
+        // 返回值为4，也就是保留4位小数
         return (int) Math.ceil(-Math.log10(i)) + 2;
     }
 
