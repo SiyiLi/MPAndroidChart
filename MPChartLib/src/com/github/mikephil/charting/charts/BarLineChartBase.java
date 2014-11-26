@@ -35,6 +35,8 @@ import com.github.mikephil.charting.utils.YLabels;
 import com.github.mikephil.charting.utils.YLabels.YLabelPosition;
 
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Locale;
 
 /**
  * Base-class of LineChart, BarChart, ScatterChart and CandleStickChart.
@@ -164,6 +166,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
     protected void init() {
         super.init();
 
+        // 初始值就是[{1, 0, 0}, {0, 1, 0}, {0, 0, 1}]
         mListener = new BarLineChartTouchListener(this, mMatrixTouch);
 
         mGridPaint = new Paint();
@@ -209,6 +212,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
             calcModulus();
 
         // execute all drawing commands
+        // 背景颜色是可以配置的
         drawGridBackground();
 
         prepareYLabels();
@@ -216,37 +220,46 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
         // make sure the graph values and grid cannot be drawn outside the
         // content-rect
         int clipRestoreCount = mDrawCanvas.save();
+        // 只画坐标区域内的东西
         mDrawCanvas.clipRect(mContentRect);
 
         drawHorizontalGrid();
 
         drawVerticalGrid();
 
+        // 虚函数，drawData in LineChart
         drawData();
 
+        // 暂时不需要
         drawLimitLines();
 
         // if highlighting is enabled
         if (mHighlightEnabled && mHighLightIndicatorEnabled && valuesToHighlight())
-            drawHighlights();
+            drawHighlights();  // 画十字线，drawHighlights in LineChart
 
         // Removes clipping rectangle
+        // 还原，以便画坐标区域之外的东西
         mDrawCanvas.restoreToCount(clipRestoreCount);
 
+        // 画圆圈，drawAdditional in LineChart
         drawAdditional();
 
         drawXLabels();
 
         drawYLabels();
 
+        // 虚函数，drawValues in LineChart
         drawValues();
 
+        // 暂时不需要
         drawLegend();
 
         drawBorder();
 
+        // 点击后出现的小窗口
         drawMarkers();
 
+        // 字符串：宝贝体重/身高曲线图
         drawDescription();
 
         canvas.drawBitmap(mDrawBitmap, 0, 0, mDrawPaint);
@@ -271,8 +284,10 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
 
         prepareXLabels();
 
+        // 先不管
         prepareLegend();
 
+        // 计算上下左右的框距，什么是框距？你懂的！
         calculateOffsets();
     }
 
@@ -296,11 +311,18 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
     private void prepareMatrixValuePx() {
 
         float scaleX = (float) ((getWidth() - mOffsetRight - mOffsetLeft) / mDeltaX);
+        //Log.d("LOUIS", "mDeltaX " + mDeltaX);
+        //Log.d("LOUIS", "scaleX " + scaleX);
         float scaleY = (float) ((getHeight() - mOffsetTop - mOffsetBottom) / mDeltaY);
+        //Log.d("LOUIS", "mDeltaY " + mDeltaY);
+        //Log.d("LOUIS", "scaleY " + scaleY);
 
         // setup all matrices
         mMatrixValueToPx.reset();
+        // 将图表往下移mYChartMin，这样就不用显示最小值以下的空白区域了
         mMatrixValueToPx.postTranslate(0, -mYChartMin);
+        // scaleX: 图表上的单位1代表多少个像素
+        // 为什么scaleY要加上负号，得结合prepareMatrixOffset来看
         mMatrixValueToPx.postScale(scaleX, -scaleY);
     }
 
@@ -314,6 +336,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
         // offset.postTranslate(mOffsetLeft, getHeight() - mOffsetBottom);
 
         if (!mInvertYAxis)
+            // 为什么Y轴上要加上getHeight() - mOffsetBottom，画个图就明白了，图在有道笔记里
             mMatrixOffset.postTranslate(mOffsetLeft, getHeight() - mOffsetBottom);
         else {
             mMatrixOffset.setTranslate(mOffsetLeft, -mOffsetTop);
@@ -404,6 +427,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
 
         float xtop = 0f, xbottom = 0f;
 
+        // 这里需要调整一下，因为xLabel有两行
         float xlabelheight = Utils.calcTextHeight(mXLabelPaint, "Q") * 2f;
 
         if (mDrawXLabels) {
@@ -441,6 +465,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
             mLegend.setOffsetLeft(mOffsetLeft);
         }
 
+        // contentRect，顾名思义，就是图标x,y轴内的区域
         prepareContentRect();
 
         prepareMatrix();
@@ -476,11 +501,18 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
     protected void calcModulus() {
 
         float[] values = new float[9];
-        mMatrixTouch.getValues(values);
+        mMatrixTouch.getValues(values); // mMatrixTouch是什么，何时赋初值的
 
+        // (mContentRect.width() * values[Matrix.MSCALE_X])是缩放后的画布宽度
+        // (mCurrentData.getXValCount() * mXLabels.mLabelWidth)是如果要每个点画一个label需要的宽度
+        // a = mCurrentData.getXValCount() / values[Matrix.MSCALE_X] 是当前屏幕显示多少个X点
+        // b = mContentRect.width() / mXLabels.mLabelWidth 是当前屏幕最多能显示多少个X Label
+        // a/b 是每几个X点画一个X Label
         mXLabels.mXAxisLabelModulus = (int) Math
                 .ceil((mCurrentData.getXValCount() * mXLabels.mLabelWidth)
                         / (mContentRect.width() * values[Matrix.MSCALE_X]));
+        //Log.d("LOUIS", "calcModulus: scaleX " + values[Matrix.MSCALE_X]);
+        //Log.d("LOUIS", "calcModulus: mXAxisLabelModulus " + mXLabels.mXAxisLabelModulus);
     }
 
     @Override
@@ -494,6 +526,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
             float space = Math
                     .abs(Math.abs(Math.max(Math.abs(mYChartMax), Math.abs(mYChartMin))) / 100f * 20f);
             
+            // 如果mYChartMax等于mYChartMin，说明只有一个点？
             if (Math.abs(mYChartMax - mYChartMin) < 0.00001f) {
                 if (Math.abs(mYChartMax) < 10f)
                     space = 1f;
@@ -504,12 +537,13 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
             Log.i(LOG_TAG, "Space: " + space);
 
             if (mStartAtZero) {
-
+                // 如果Y轴是从0开始
                 if (mYChartMax < 0) {
                     mYChartMax = 0;
                     // calc delta
                     mYChartMin = mYChartMin - space;
                 } else {
+                    // 没有考虑mYChartMax为正值而mYChartMin为负值的情况
                     mYChartMin = 0;
                     // calc delta
                     mYChartMax = mYChartMax + space;
@@ -520,7 +554,8 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
                 mYChartMax = mYChartMax + space / 2f;
             }
         }
-
+        // mDeltaY的大小: 例如Y轴最大值是124，最小值为38
+        // 一般情况下，其值为124+(124-38)*0.20
         mDeltaY = Math.abs(mYChartMax - mYChartMin);
     }
 
@@ -531,6 +566,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
 
         StringBuffer a = new StringBuffer();
 
+        // 单位都是字符数
         int max = (int) Math.round(mCurrentData.getXValAverageLength()
                 + mXLabels.getSpaceBetweenLabels());
 
@@ -556,12 +592,17 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
 
         // calculate the starting and entry point of the y-labels (depending on
         // zoom / contentrect bounds)
+        // 刚开始的时候mContentRect还没有被初始化，所以if肯定是false
+        // 默认mScaleY是1，也就是所有点都显示在屏幕内，isFullyZoomedOutY此时返回true
         if (mContentRect.width() > 10 && !isFullyZoomedOutY()) {
-
+            // mContentRect已被初始化，可能已经scale，不能再简单地yMin = mYChartMin
+            // 把绘图区域的像素点，变换成图表中的坐标
             PointD p1 = getValuesByTouchPoint(mContentRect.left, mContentRect.top);
             PointD p2 = getValuesByTouchPoint(mContentRect.left, mContentRect.bottom);
 
             if (!mInvertYAxis) {
+                // top是小值，bottom是大值
+                // 但yMin对应bottom，yMax对应top，反转过来了
                 yMin = (float) p2.y;
                 yMax = (float) p1.y;
             } else {
@@ -574,8 +615,10 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
             }
 
         } else {
+            Log.d("LOUIS", "mYChartMin " + mYChartMin);
+            Log.d("LOUIS", "mYChartMax " + mYChartMax);
 
-            if (!mInvertYAxis) {
+            if (!mInvertYAxis) { // 对于宝贝树，if为true
                 yMin = mYChartMin;
                 yMax = mYChartMax;
             } else {
@@ -597,14 +640,22 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
             return;
         }
 
+        // 可以通过setYLabelCount设置mYLabelCount
+        // babytree里面设置为5，调整后最多为6
         double rawInterval = range / labelCount;
+        Log.d("LOUIS", "mYLabelCount " + labelCount);
+        Log.d("LOUIS", "rawInterval " + rawInterval);
         double interval = Utils.roundToNextSignificant(rawInterval);
+        Log.d("LOUIS", "interval " + interval);
         double intervalMagnitude = Math.pow(10, (int) Math.log10(interval));
+        Log.d("LOUIS", "intervalMagnitude " + intervalMagnitude);
         int intervalSigDigit = (int) (interval / intervalMagnitude);
+        Log.d("LOUIS", "intervalSigDigit " + intervalSigDigit);
         if (intervalSigDigit > 5) {
             // Use one order of magnitude higher, to avoid intervals like 0.9 or
             // 90
             interval = Math.floor(10 * intervalMagnitude);
+            Log.d("LOUIS", "interval " + interval);
         }
 
         // if the labels should only show min and max
@@ -618,7 +669,9 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
         } else {
 
             double first = Math.ceil(yMin / interval) * interval;
+            Log.d("LOUIS", "first " + first);
             double last = Utils.nextUp(Math.floor(yMax / interval) * interval);
+            Log.d("LOUIS", "last " + last);
 
             double f;
             int i;
@@ -631,6 +684,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
 
             if (mYLabels.mEntries.length < n) {
                 // Ensure stops contains at least numStops elements.
+                // 考虑到数据会动态增加，所以要动态分配？
                 mYLabels.mEntries = new float[n];
             }
 
@@ -640,6 +694,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
         }
 
         if (interval < 1) {
+            // 只要不是小于1，Y坐标上就不显示小数
             mYLabels.mDecimals = (int) Math.ceil(-Math.log10(interval));
         } else {
             mYLabels.mDecimals = 0;
@@ -688,7 +743,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
      * 
      * @param yPos
      */
-    protected void drawXLabels(float yPos) {
+    @SuppressLint("NewApi") protected void drawXLabels(float yPos) {
 
         // pre allocate to save performance (dont allocate in loop)
         float[] position = new float[] {
@@ -709,7 +764,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
 
                 String label = mCurrentData.getXVals().get(i);
 
-                if (mXLabels.isAvoidFirstLastClippingEnabled()) {
+                if (mXLabels.isAvoidFirstLastClippingEnabled()) { // 新功能研究一下
 
                     // avoid clipping of the last
                     if (i == mCurrentData.getXValCount() - 1) {
@@ -726,8 +781,21 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
                     }
                 }
 
+                // 再一次简单粗暴
+                String timeStr = mCurrentData.getXVals().get(i);
+                long timestamp = Integer.valueOf(timeStr);
+                timestamp *= (24*60*60*1000);
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTimeInMillis(timestamp);
+                label = calendar.get(Calendar.DATE) + "日";
+                label += calendar.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.SHORT, Locale.getDefault());
                 mDrawCanvas.drawText(label, position[0],
                         yPos,
+                        mXLabelPaint);
+                label = (calendar.get(Calendar.YEAR)%100) + "年";
+                label += calendar.getDisplayName(Calendar.MONTH, Calendar.SHORT, Locale.getDefault());
+                mDrawCanvas.drawText(label, position[0],
+                        yPos+Utils.convertDpToPixel(3.5f)*3f,
                         mXLabelPaint);
             }
         }
@@ -892,7 +960,9 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
         // draw the horizontal grid
         for (int i = 0; i < mYLabels.mEntryCount; i++) {
 
+            // 图表里面的坐标
             position[1] = mYLabels.mEntries[i];
+            // 转换到实际的像素坐标
             transformPointArray(position);
 
             mDrawCanvas.drawLine(mOffsetLeft, position[1], getWidth() - mOffsetRight, position[1],
@@ -1228,6 +1298,8 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
         invalidate();
 
         newTouchMatrix.set(mMatrixTouch);
+        float indicesInView = mDeltaX / mScaleX;
+        Log.d("LOUIS", "" + indicesInView);
         return newTouchMatrix;
     }
 
@@ -1762,11 +1834,18 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
             xIndex = (int) base + 1;
         }
 
-        ArrayList<SelInfo> valsAtIndex = getYValsAtIndex(xIndex);
+        // 我们简单粗暴一点
+        //ArrayList<SelInfo> valsAtIndex = getYValsAtIndex(xIndex);
 
-        dataSetIndex = Utils.getClosestDataSetIndex(valsAtIndex, (float) yTouchVal);
+        //dataSetIndex = Utils.getClosestDataSetIndex(valsAtIndex, (float) yTouchVal);
+        dataSetIndex = 0;
 
         if (dataSetIndex == -1)
+            return null;
+
+        if (mCurrentData != null && mCurrentData.getDataSetByIndex(0) != null)
+            xIndex = mCurrentData.getDataSetByIndex(0).getNearestEntryForXIndex(xIndex).getXIndex();
+        else
             return null;
 
         // Toast.makeText(getContext(), "xindex: " + xIndex + ", dataSetIndex: "

@@ -196,7 +196,7 @@ public abstract class Chart<T extends ChartData<? extends DataSet<? extends Entr
     protected OnChartValueSelectedListener mSelectionListener;
 
     /** text that is displayed when the chart is empty */
-    private String mNoDataText = "No chart data available.";
+    private String mNoDataText = "还没有宝宝数据哦，赶快去测量吧！";
 
     /**
      * Gesture listener for custom callbacks when making gestures on the chart.
@@ -355,9 +355,11 @@ public abstract class Chart<T extends ChartData<? extends DataSet<? extends Entr
         prepare();
 
         // calculate how many digits are needed
+        // 如果图表中的点要加上数字标注，那该用什么DecimalFormat
         calcFormats();
 
         Log.i(LOG_TAG, "Data is set.");
+        // 接下来就是onDraw了
     }
 
     /**
@@ -450,6 +452,7 @@ public abstract class Chart<T extends ChartData<? extends DataSet<? extends Entr
                 b.append("0");
             }
 
+            // 这么多#号表示什么意思？
             DecimalFormat formatter = new DecimalFormat("###,###,###,##0" + b.toString());
             mValueFormatter = new DefaultValueFormatter(formatter);
         }
@@ -498,6 +501,7 @@ public abstract class Chart<T extends ChartData<? extends DataSet<? extends Entr
             mDrawCanvas = new Canvas(mDrawBitmap);
         }
 
+        // 这里似乎已经不需要修改了
         // clear everything
         mDrawBitmap.eraseColor(Color.TRANSPARENT);
 

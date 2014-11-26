@@ -155,6 +155,7 @@ public abstract class ChartData<T extends DataSet<? extends Entry>> {
             return;
 
         for (int i = 0; i < dataSets.size(); i++) {
+            // mYVals的数目必须比mXVals的数目小，有没有考虑过mYVals的xIndex超出mXVals的范围呢？
             if (dataSets.get(i)
                     .getYVals()
                     .size() > mXVals.size()) {

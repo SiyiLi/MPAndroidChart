@@ -167,7 +167,31 @@ public abstract class DataSet<T extends Entry> {
 
         return null;
     }
+    
+    public Entry getNearestEntryForXIndex(int xIndex) {
 
+        int i = 0;
+        int targetI = -1;
+        for (i = 0; i < mYVals.size(); i++) {
+            if (xIndex <= mYVals.get(i).getXIndex()) {
+                targetI = i;
+                break;
+            }
+        }
+        
+        if (targetI == 0) {
+            return mYVals.get(0);
+        } else if (targetI != -1) {
+            if ((mYVals.get(targetI).getXIndex() - xIndex) <= (xIndex - mYVals.get(targetI-1).getXIndex())) {
+                return mYVals.get(targetI);
+            } else {
+                return mYVals.get(targetI-1);
+            }
+        } else {
+            return mYVals.get(mYVals.size()-1);
+        }
+    }
+    
     /**
      * Returns all Entry objects at the given xIndex. INFORMATION: This method
      * does calculations at runtime. Do not over-use in performance critical
