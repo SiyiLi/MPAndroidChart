@@ -203,6 +203,8 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
 
         drawVerticalGrid();
 
+        drawRefData();
+
         // 虚函数，drawData in LineChart
         drawData();
 
@@ -358,7 +360,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
         float xtop = 0f, xbottom = 0f;
 
         // 这里需要调整一下，因为xLabel有两行
-        float xlabelheight = Utils.calcTextHeight(mXLabelPaint, "Q") * 2f;
+        float xlabelheight = Utils.calcTextHeight(mXLabelPaint, "Q") * 4f;
 
         if (mDrawXLabels) {
 
@@ -913,6 +915,15 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
                         - mOffsetBottom, mGridPaint);
             }
         }
+    }
+
+    protected void getXRangeInScreen(int [] xRange) {
+        float[] left =  new float [] {mOffsetLeft, 0};
+        mTrans.pixelsToValue(left);
+        float[] right =  new float [] {getWidth() - mOffsetRight, 0};
+        mTrans.pixelsToValue(right);
+        xRange[0] = (int) left[0];
+        xRange[1] = (int) right[0];
     }
 
     /**

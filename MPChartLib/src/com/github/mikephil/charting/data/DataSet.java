@@ -98,6 +98,95 @@ public abstract class DataSet<T extends Entry> {
         }
     }
 
+    public float getYValForXIndexByForce(int xIndex) {
+
+        float yPre = 0;
+        float yNext = 0;
+        boolean isPreValid = false;
+        int xPre = 0;
+        int xNext = 0;
+
+        for (int i = 0; i < mYVals.size(); i++) {
+
+            Entry e = mYVals.get(i);
+            if (e.getXIndex() < xIndex) {
+                yPre = e.getVal();
+                xPre = e.getXIndex();
+                isPreValid = true;
+                continue;
+            } else if (e.getXIndex() == xIndex) {
+                return e.getVal();
+            } else {// e.getXIndex() > xRange[1]
+                if (!isPreValid)
+                    break;
+                yNext = e.getVal();
+                xNext = e.getXIndex();
+                float slope = (yNext - yPre) / (xNext - xPre);
+                return yPre + (xIndex - xPre) * slope;
+            }
+        }
+
+        return Float.NaN;
+    }
+    
+    public boolean getYRangeInXRange(int [] xRange, float [] yRange) {
+        if (mYVals.size() == 0) {
+            return false;
+        }
+
+        float yMin = 0;
+        float yMax = 0;
+        boolean isInRange = false;
+        
+        float tmp = getYValForXIndexByForce(xRange[0]);
+        if (!Float.isNaN(tmp)) {
+            isInRange = true;
+            yMin = tmp;
+            yMax = tmp;
+        }
+        
+        tmp = getYValForXIndexByForce(xRange[1]);
+        if (!Float.isNaN(tmp)) {
+            if (isInRange == false) {
+                isInRange = true;
+                yMin = tmp;
+                yMax = tmp;
+            } else {
+                if (tmp < yMin)
+                    yMin = tmp;
+                if (tmp > yMax)
+                    yMax = tmp;
+            }
+        }
+
+        for (int i = 0; i < mYVals.size(); i++) {
+
+            Entry e = mYVals.get(i);
+            if (e.getXIndex() < xRange[0])
+                continue;
+            if (e.getXIndex() > xRange[1])
+                break;
+
+            if (isInRange == false) {
+                isInRange = true;
+                yMin = mYVals.get(i).getVal();
+                yMax = mYVals.get(i).getVal();
+                continue;
+            }
+            
+            if (e.getVal() < yMin)
+                yMin = e.getVal();
+
+            if (e.getVal() > yMax)
+                yMax = e.getVal();
+        }
+        
+        yRange[0] = yMin;
+        yRange[1] = yMax;
+        
+        return isInRange;
+    }
+    
     /**
      * calculates the sum of all y-values
      */

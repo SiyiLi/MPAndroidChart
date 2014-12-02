@@ -399,7 +399,8 @@ public class Transformer {
     }
 
     // Siyi: Based on centerViewPort
-    public synchronized void showNPoints(final float[] pts, final float scaleX, final ChartInterface chart) {
+    public synchronized void showNPoints(final float[] pts, final float scaleX,
+                    final float scaleY,final ChartInterface chart) {
 
         final View v = chart.getChartView();
 
@@ -417,13 +418,47 @@ public class Transformer {
                 final float x = -pts[0] + chart.getOffsetLeft();
 
                 save.postTranslate(x, 0);
-                save.postScale(scaleX / mScaleX, 1f);
+                
+                float targetScaleX = scaleX / mScaleX;
+                float targetScaleY = scaleY / mScaleY;
+                save.postScale(targetScaleX, targetScaleY);
 
+                final float y = chart.getOffsetTop() - pts[1] * targetScaleY
+                        + (targetScaleY - 1) * (chart.getHeight() - chart.getOffsetBottom());
+
+                save.postTranslate(0, y);
+                
                 refresh(save, chart);
             }
         });
     }
 
+    public synchronized void scaleYAdaptive(final float[] pts, final float scaleY, final ChartInterface chart) {
+
+        final View v = chart.getChartView();
+
+        v.post(new Runnable() {
+
+            @Override
+            public void run() {
+                Matrix save = new Matrix();
+                save.set(mMatrixTouch);
+
+                pointValuesToPixel(pts);
+                
+                float targetScaleY = scaleY / mScaleY;
+
+                final float y = chart.getOffsetTop() - pts[1] * targetScaleY
+                        + (targetScaleY - 1) * (chart.getHeight() - chart.getOffsetBottom());
+
+                save.postScale(1f, scaleY / mScaleY);
+                save.postTranslate(0, y);
+
+                refresh(save, chart);
+            }
+        });
+    }
+    
     /**
      * call this method to refresh the graph with a given matrix
      * 

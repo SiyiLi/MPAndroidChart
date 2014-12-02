@@ -6,7 +6,10 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.os.Handler;
+import android.os.Message;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
@@ -29,6 +32,16 @@ public class LineChart extends BarLineChartBase<LineData> {
     protected Paint mCirclePaintInner;
 
     private FillFormatter mFillFormatter;
+    
+    private Handler mHanler = new Handler() {
+
+        @Override
+        public void handleMessage(Message msg) {
+            scaleYAdaptive();
+            super.handleMessage(msg);
+        }
+        
+    };
 
     public LineChart(Context context) {
         super(context);
@@ -123,6 +136,168 @@ public class LineChart extends BarLineChartBase<LineData> {
         public CPoint(float x, float y) {
             this.x = x;
             this.y = y;
+        }
+    }
+
+    @Override
+    protected void drawRefData() {
+        ArrayList<LineDataSet> dataSets = mData.getDataSets();
+
+        // the path for the cubic-spline
+        Path upper = new Path();
+        Path middle = new Path();
+        Path lower = new Path();
+        CPoint upperStart = null;
+        
+        // Index 0 stands for the real data line
+        // Index 1 stands for the 3DS reference line
+        for (int i = 1; i < mData.getDataSetCount(); i++) {
+
+            LineDataSet dataSet = dataSets.get(i);
+            ArrayList<Entry> entries = dataSet.getYVals();
+
+            if (entries.size() < 1)
+                continue;
+
+            mRenderPaint.setStrokeWidth(dataSet.getLineWidth());
+            mRenderPaint.setPathEffect(dataSet.getDashPathEffect());
+
+            // get the color that is specified for this position from the
+            // DataSet
+            mRenderPaint.setColor(dataSet.getColor());
+            mRenderPaint.setAlpha(80);
+
+            float intensity = dataSet.getCubicIntensity();
+            
+            ArrayList<CPoint> points = new ArrayList<CPoint>();
+            for (Entry e : entries)
+                points.add(new CPoint(e.getXIndex(), e.getVal()));
+
+            if (points.size() > 1) {
+                for (int j = 0; j < points.size() * mPhaseX; j++) {
+
+                    CPoint point = points.get(j);
+
+                    if (j == 0) {
+                        upperStart = point;
+                        CPoint next = points.get(j + 1);
+                        point.dx = ((next.x - point.x) * intensity);
+                        point.dy = ((next.y - point.y) * intensity);
+                    } else if (j == points.size() - 1) {
+                        CPoint prev = points.get(j - 1);
+                        point.dx = ((point.x - prev.x) * intensity);
+                        point.dy = ((point.y - prev.y) * intensity);
+                    } else {
+                        CPoint next = points.get(j + 1);
+                        CPoint prev = points.get(j - 1);
+                        point.dx = ((next.x - prev.x) * intensity);
+                        point.dy = ((next.y - prev.y) * intensity);
+                    }
+
+                    if (i == 1) {
+                        if (j == 0) {
+                            upper.moveTo(point.x, point.y * mPhaseY);
+                        } else {
+                            CPoint prev = points.get(j - 1);
+                            upper.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
+                                    (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
+                        }
+                    } else if (i == 2) {
+                        if (j == 0) {
+                            middle.moveTo(point.x, point.y * mPhaseY);
+                        } else {
+                            CPoint prev = points.get(j - 1);
+                            middle.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
+                                    (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
+                        }
+                    } else if (i == 3) {
+                        if (j == 0) {
+                            lower.moveTo(point.x, point.y * mPhaseY);
+                        } else {
+                            CPoint prev = points.get(j - 1);
+                            lower.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
+                                    (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
+                        }
+                    } else if (i == 4) {
+
+                    }
+                }
+                
+                for (int j = points.size() - 1; j > 0; j--) {
+
+                    CPoint point = points.get(j);
+
+                    if (j == 0) {
+                        CPoint next = points.get(j + 1);
+                        point.dx = ((next.x - point.x) * intensity);
+                        point.dy = ((next.y - point.y) * intensity);
+                    } else if (j == points.size() - 1) {
+                        CPoint prev = points.get(j - 1);
+                        point.dx = ((point.x - prev.x) * intensity);
+                        point.dy = ((point.y - prev.y) * intensity);
+                    } else {
+                        CPoint next = points.get(j + 1);
+                        CPoint prev = points.get(j - 1);
+                        point.dx = ((next.x - prev.x) * intensity);
+                        point.dy = ((next.y - prev.y) * intensity);
+                    }
+
+                    if (i == 1) {
+
+                    } else if (i == 2) {
+                        if (j == points.size() - 1) {
+                            upper.lineTo(point.x, point.y * mPhaseY);
+                        } else {
+                            CPoint prev = points.get(j - 1);
+                            upper.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
+                                    (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
+                        }
+                        
+                        if (j == 1) {
+                            upper.lineTo(upperStart.x, upperStart.y);
+                            upper.close();
+                            mRenderPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+                            mTrans.pathValueToPixel(upper);
+                            mDrawCanvas.drawPath(upper, mRenderPaint);
+                        }
+                    } else if (i == 3) {
+                        if (j == points.size() - 1) {
+                            middle.lineTo(point.x, point.y * mPhaseY);
+                        } else {
+                            CPoint prev = points.get(j - 1);
+                            middle.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
+                                    (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
+                        }
+                        
+                        if (j == 1) {
+                            middle.lineTo(upperStart.x, upperStart.y);
+                            middle.close();
+                            mRenderPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+                            mRenderPaint.setColor(Color.rgb(255, 187, 115));
+                            mRenderPaint.setAlpha(80);
+                            mTrans.pathValueToPixel(middle);
+                            mDrawCanvas.drawPath(middle, mRenderPaint);
+                        }
+                    } else if (i == 4) {
+                        if (j == points.size() - 1) {
+                            lower.lineTo(point.x, point.y * mPhaseY);
+                        } else {
+                            CPoint prev = points.get(j - 1);
+                            lower.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
+                                    (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
+                        }
+                        
+                        if (j == 1) {
+                            lower.lineTo(upperStart.x, upperStart.y);
+                            lower.close();
+                            mRenderPaint.setStyle(Paint.Style.FILL_AND_STROKE);
+                            mTrans.pathValueToPixel(lower);
+                            mDrawCanvas.drawPath(lower, mRenderPaint);
+                        }
+                    }
+                }
+            }
+            mRenderPaint.setPathEffect(null);
         }
     }
 
@@ -548,9 +723,76 @@ public class LineChart extends BarLineChartBase<LineData> {
             }
         }
 
-        float[] pts = new float[] { (float) (i - num) + 0.5f, 0 };
-
+        int[] xRange = new int[] { (i - num) < 0 ? 0 : i - num, i };
+        float[] yRange = new float[] { 0, 0 };
+        getYRangeInXRange(xRange, yRange);
+        float deltaY = yRange[1] - yRange[0];
+        float maxY = yRange[1] + deltaY * 0.1f;
+        
         float scaleX = mDeltaX / num;
-        mTrans.showNPoints(pts, scaleX, this);
+        float scaleY = mDeltaY / (1.2f * deltaY);
+
+        float[] pts = new float[] { (float) (i - num) + 0.5f, maxY };
+
+        mTrans.showNPoints(pts, scaleX, scaleY, this);
+
+    }
+    
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        mHanler.removeMessages(0);
+        mHanler.sendEmptyMessageDelayed(0, 1000);
+        return super.onTouchEvent(event);
+    }
+    
+    public synchronized void scaleYAdaptive() {
+
+        int[] xRange = new int[] { 0, 0 };
+        float[] yRange = new float[] { 0, 0 };
+        getXRangeInScreen(xRange);
+        getYRangeInXRange(xRange, yRange);
+        float deltaY = yRange[1] - yRange[0];
+        float scaleY = mDeltaY / (1.2f * deltaY);
+        float maxY = yRange[1] + deltaY * 0.1f;
+        float[] pts = new float[] { 0, maxY };
+        mTrans.scaleYAdaptive(pts, scaleY, this);
+
+    }
+    
+    protected boolean getYRangeInXRange(int [] xRange, float [] yRange) {
+        ArrayList<LineDataSet> dataSets = mData.getDataSets();
+        float yMax = 0;
+        float yMin = 0;
+        float[] yMinMax = new float[] { 0, 0 };
+
+        if (dataSets == null || dataSets.size() < 1)
+            return false;
+
+        int i = 0;
+        while (i < dataSets.size() && !dataSets.get(i).getYRangeInXRange(xRange, yMinMax))
+            i++;
+
+        if (i == dataSets.size())
+            return false;
+
+        yMin = yMinMax[0];
+        yMax = yMinMax[1];
+
+        for (i = i + 1; i < dataSets.size(); i++) {
+
+            if (!dataSets.get(i).getYRangeInXRange(xRange, yMinMax))
+                continue;
+
+            if (yMinMax[0] < yMin)
+                yMin = yMinMax[0];
+
+            if (yMinMax[1] > yMax)
+                yMax = yMinMax[1];
+        }
+
+        yRange[0] = yMin;
+        yRange[1] = yMax;
+
+        return true;
     }
 }

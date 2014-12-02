@@ -114,7 +114,7 @@ public class BarLineChartTouchListener<T extends BarLineChartBase<? extends BarL
                             if (mSavedXDist > mSavedYDist)
                                 mTouchMode = X_ZOOM;
                             else
-                                mTouchMode = Y_ZOOM;
+                                mTouchMode = X_ZOOM; // Siyi: not allowed to be scaled by user in Y
                         }
                     }
 
@@ -196,11 +196,11 @@ public class BarLineChartTouchListener<T extends BarLineChartBase<? extends BarL
 
         // check if axis is inverted
         if (!mChart.isInvertYAxisEnabled()) {
-            mMatrix.postTranslate(dragPoint.x - mTouchStartPoint.x, dragPoint.y
-                    - mTouchStartPoint.y);
+            // Siyi: not allowed to be translated by user in Y
+            mMatrix.postTranslate(dragPoint.x - mTouchStartPoint.x, 0);
         } else {
-            mMatrix.postTranslate(dragPoint.x - mTouchStartPoint.x, -(dragPoint.y
-                    - mTouchStartPoint.y));
+            // Siyi: not allowed to be translated by user in Y
+            mMatrix.postTranslate(dragPoint.x - mTouchStartPoint.x, 0);
         }
     }
 
@@ -385,7 +385,7 @@ public class BarLineChartTouchListener<T extends BarLineChartBase<? extends BarL
 
             PointF trans = getTrans(e.getX(), e.getY());
 
-            mChart.zoom(1.4f, 1.4f, trans.x, trans.y);
+            mChart.zoom(1.4f, 1f, trans.x, 0); // Siyi: don't scale along y axis.
 
             Log.i("BarlineChartTouch", "Double-Tap, Zooming In, x: " + trans.x + ", y: " + trans.y);
         }

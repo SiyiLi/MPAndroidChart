@@ -900,6 +900,9 @@ public abstract class Chart<T extends ChartData<? extends DataSet<? extends Entr
      */
     protected abstract void drawData();
 
+    protected void drawRefData() {
+    }
+
     /**
      * draws additional stuff, whatever that might be
      */
