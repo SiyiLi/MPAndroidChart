@@ -201,7 +201,7 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
 
         drawHorizontalGrid();
 
-        drawVerticalGrid();
+        // drawVerticalGrid();
 
         drawRefData();
 
@@ -668,8 +668,83 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
                 0f, 0f
         };
 
-        for (int i = 0; i < mData.getXValCount(); i += mXLabels.mXAxisLabelModulus) {
+        int showMode = 0;
+        int[] xRange = { 0, 0 };
+        getXRangeInScreen(xRange);
+        if (xRange[1] - xRange[0] < 61) // 61天，两个月
+            showMode = 1; // show days，数字以后用静态变量替换
+        else if (xRange[1] - xRange[0] < 730) // 730天，两年
+            showMode = 2; // show months;
+        else
+            showMode = 3; // show years
 
+        int start = xRange[0] - 1;
+        if (start < 0)
+            start = 0;
+        int end = xRange[1] + 1;
+        if (end > mData.getXValCount() - 1)
+            end = mData.getXValCount() - 1;
+
+        int i = start;
+        int delta = 0;
+        int firstMonth = 0;
+        int currentMonth = 0;
+        int firstYear = 0;
+        int currentYear = 0;
+        float boundaryPosition = 0f;
+        boolean firstLabel = true;
+        boolean firstBoundary = true;
+        int monthStep = (int) Math.ceil((double) mXLabels.mXAxisLabelModulus / 30);
+        while (i <= end) {
+            long timestamp;
+            String timeStr;
+            timeStr = mData.getXVals().get(i);
+            timestamp = Integer.valueOf(timeStr);
+            delta = (int) (timestamp - i);
+            timestamp *= (24 * 60 * 60 * 1000);
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTimeInMillis(timestamp);
+            int year = calendar.get(Calendar.YEAR);
+            int month = calendar.get(Calendar.MONTH);
+            int date = calendar.get(Calendar.DATE);
+            if (i == start) { // 确定起始绘制点
+                if (showMode == 1) {
+                    // 如果mXAxisLabelModulus不变，则所有的绘制点都已确定。
+                    // 不会随着图表的平移而变化
+                    if (i % mXLabels.mXAxisLabelModulus != 0) {
+                        i = (1 + i / mXLabels.mXAxisLabelModulus) * mXLabels.mXAxisLabelModulus;
+                        continue;
+                    }
+                } else if (showMode == 2) {
+                    // 如果不是某个月的第一天
+                    // 或者是某个月的第一天，但不能被monthStep整除
+                    if (date != 1 || month % monthStep != 0) {
+                        calendar.set(year, (1 + month / monthStep) * monthStep, 1);
+                        i = (int) (calendar.getTimeInMillis() / (24 * 60 * 60 * 1000)) - delta;
+                        continue;
+                    }
+                } else if (showMode == 3) {
+                    if (date != 1 || month != 0) {
+                        calendar.set(year + 1, 0, 1);
+                        i = (int) (calendar.getTimeInMillis() / (24 * 60 * 60 * 1000)) - delta;
+                        continue;
+                    }
+                }
+            }
+
+            // 第一个绘制点已确定
+            if (firstLabel) {
+                if (showMode == 1) {
+                    currentMonth = month;
+                    firstMonth = month;
+                    firstYear = year;
+                } else if (showMode == 2) {
+                    currentYear = year;
+                    firstYear = year;
+                }
+                firstLabel = false;
+            }
+            
             position[0] = i;
 
             // center the text
@@ -699,23 +774,66 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
                     }
                 }
 
-                // 再一次简单粗暴
-                String timeStr = mData.getXVals().get(i);
-                long timestamp = Integer.valueOf(timeStr);
-                timestamp *= (24*60*60*1000);
-                Calendar calendar = Calendar.getInstance();
-                calendar.setTimeInMillis(timestamp);
-                label = calendar.get(Calendar.DATE) + "日";
-                label += calendar.getDisplayName(Calendar.DAY_OF_WEEK, Calendar.SHORT, Locale.getDefault());
+                if (showMode == 1) {
+                    label = date + "日";
+                } else if (showMode == 2) {
+                    label = (month + 1) + "月";
+                } else {
+                    label = year + "年";
+                }
+                
                 mDrawCanvas.drawText(label, position[0],
                         yPos,
                         mXLabelPaint);
-                label = (calendar.get(Calendar.YEAR)%100) + "年";
-                label += calendar.getDisplayName(Calendar.MONTH, Calendar.SHORT, Locale.getDefault());
-                mDrawCanvas.drawText(label, position[0],
-                        yPos+Utils.convertDpToPixel(3.5f)*3f,
+            }
+
+            // 第二行日期边界信息的绘制，不管有没有超出边界都要绘制
+            if ((showMode == 1 && currentMonth < month) || (showMode == 2 && currentYear < year)) {
+                String label = null;
+                if (showMode == 1) {
+                    label = year + "年";
+                    label += (month + 1) + "月";
+                    currentMonth = month;
+                } else if (showMode == 2) {
+                    label = year + "年";
+                    currentYear = year;
+                }
+                
+                float xPosition = position[0] > mOffsetLeft * 2 ? position[0] : mOffsetLeft * 2;
+                if (firstBoundary) {
+                    firstBoundary = false;
+                    boundaryPosition = xPosition;
+                }
+                mDrawCanvas.drawText(label, xPosition,
+                        yPos + Utils.convertDpToPixel(4f) * 3f,
                         mXLabelPaint);
             }
+            
+            // 循环变量i的增量的计算
+            if (showMode == 1) {
+                i += mXLabels.mXAxisLabelModulus;
+            } else if (showMode == 2) {
+                calendar.set(year, month + monthStep, 1);
+                i = (int) (calendar.getTimeInMillis() / (24*60*60*1000)) - delta;
+            } else {
+                calendar.set(year + 1, 0, 1);
+                i = (int) (calendar.getTimeInMillis() / (24*60*60*1000)) - delta;
+            }
+        }
+        
+        // 第二行日期公共信息的绘制
+        if (showMode != 3) {
+            String label = null;
+            if (showMode == 1) {
+                label = firstYear + "年";
+                label += (firstMonth + 1) + "月";
+            } else if (showMode == 2) {
+                label = firstYear + "年";
+            }
+            if (firstBoundary || mOffsetLeft * 2 + Utils.calcTextWidth(mXLabelPaint, label) < boundaryPosition)
+                mDrawCanvas.drawText(label, mOffsetLeft * 2,
+                        yPos + Utils.convertDpToPixel(4f) * 3f,
+                        mXLabelPaint);
         }
     }
 
