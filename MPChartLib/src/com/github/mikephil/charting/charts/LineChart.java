@@ -3,9 +3,11 @@ package com.github.mikephil.charting.charts;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PathEffect;
 import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
@@ -144,10 +146,10 @@ public class LineChart extends BarLineChartBase<LineData> {
         ArrayList<LineDataSet> dataSets = mData.getDataSets();
 
         // the path for the cubic-spline
-        Path upper = new Path();
-        Path middle = new Path();
-        Path lower = new Path();
-        CPoint upperStart = null;
+        Path outer = new Path();
+        Path inner = new Path();
+        Path upperBorder = new Path();
+        Path lowerBorder = new Path();
         
         // Index 0 stands for the real data line
         // Index 1 stands for the 3DS reference line
@@ -162,11 +164,6 @@ public class LineChart extends BarLineChartBase<LineData> {
             mRenderPaint.setStrokeWidth(dataSet.getLineWidth());
             mRenderPaint.setPathEffect(dataSet.getDashPathEffect());
 
-            // get the color that is specified for this position from the
-            // DataSet
-            mRenderPaint.setColor(dataSet.getColor());
-            mRenderPaint.setAlpha(80);
-
             float intensity = dataSet.getCubicIntensity();
             
             ArrayList<CPoint> points = new ArrayList<CPoint>();
@@ -179,7 +176,6 @@ public class LineChart extends BarLineChartBase<LineData> {
                     CPoint point = points.get(j);
 
                     if (j == 0) {
-                        upperStart = point;
                         CPoint next = points.get(j + 1);
                         point.dx = ((next.x - point.x) * intensity);
                         point.dy = ((next.y - point.y) * intensity);
@@ -196,103 +192,91 @@ public class LineChart extends BarLineChartBase<LineData> {
 
                     if (i == 1) {
                         if (j == 0) {
-                            upper.moveTo(point.x, point.y * mPhaseY);
+                            outer.moveTo(point.x, point.y * mPhaseY);
                         } else {
                             CPoint prev = points.get(j - 1);
-                            upper.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
+                            outer.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
                                     (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
                         }
                     } else if (i == 2) {
                         if (j == 0) {
-                            middle.moveTo(point.x, point.y * mPhaseY);
+                            inner.moveTo(point.x, point.y * mPhaseY);
+                            upperBorder.moveTo(point.x, point.y * mPhaseY);
                         } else {
                             CPoint prev = points.get(j - 1);
-                            middle.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
+                            inner.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
+                                    (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
+                            upperBorder.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
                                     (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
                         }
-                    } else if (i == 3) {
-                        if (j == 0) {
-                            lower.moveTo(point.x, point.y * mPhaseY);
-                        } else {
-                            CPoint prev = points.get(j - 1);
-                            lower.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
-                                    (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
-                        }
-                    } else if (i == 4) {
-
                     }
                 }
                 
-                for (int j = points.size() - 1; j > 0; j--) {
+                for (int j = points.size() - 1; j >= 0; j--) {
 
                     CPoint point = points.get(j);
 
                     if (j == 0) {
-                        CPoint next = points.get(j + 1);
-                        point.dx = ((next.x - point.x) * intensity);
-                        point.dy = ((next.y - point.y) * intensity);
-                    } else if (j == points.size() - 1) {
-                        CPoint prev = points.get(j - 1);
+                        CPoint prev = points.get(j + 1);
                         point.dx = ((point.x - prev.x) * intensity);
                         point.dy = ((point.y - prev.y) * intensity);
+                    } else if (j == points.size() - 1) {
+                        CPoint next = points.get(j - 1);
+                        point.dx = ((next.x - point.x) * intensity);
+                        point.dy = ((next.y - point.y) * intensity);
                     } else {
-                        CPoint next = points.get(j + 1);
-                        CPoint prev = points.get(j - 1);
+                        CPoint prev = points.get(j + 1);
+                        CPoint next = points.get(j - 1);
                         point.dx = ((next.x - prev.x) * intensity);
                         point.dy = ((next.y - prev.y) * intensity);
                     }
 
-                    if (i == 1) {
-
-                    } else if (i == 2) {
+                    if (i == 3) {
                         if (j == points.size() - 1) {
-                            upper.lineTo(point.x, point.y * mPhaseY);
+                            inner.lineTo(point.x, point.y * mPhaseY);
+                            lowerBorder.moveTo(point.x, point.y * mPhaseY);
                         } else {
-                            CPoint prev = points.get(j - 1);
-                            upper.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
+                            CPoint prev = points.get(j + 1);
+                            inner.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
+                                    (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
+                            lowerBorder.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
                                     (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
                         }
                         
-                        if (j == 1) {
-                            upper.lineTo(upperStart.x, upperStart.y);
-                            upper.close();
-                            mRenderPaint.setStyle(Paint.Style.FILL_AND_STROKE);
-                            mTrans.pathValueToPixel(upper);
-                            mDrawCanvas.drawPath(upper, mRenderPaint);
-                        }
-                    } else if (i == 3) {
-                        if (j == points.size() - 1) {
-                            middle.lineTo(point.x, point.y * mPhaseY);
-                        } else {
-                            CPoint prev = points.get(j - 1);
-                            middle.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
-                                    (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
-                        }
-                        
-                        if (j == 1) {
-                            middle.lineTo(upperStart.x, upperStart.y);
-                            middle.close();
-                            mRenderPaint.setStyle(Paint.Style.FILL_AND_STROKE);
-                            mRenderPaint.setColor(Color.rgb(255, 187, 115));
-                            mRenderPaint.setAlpha(80);
-                            mTrans.pathValueToPixel(middle);
-                            mDrawCanvas.drawPath(middle, mRenderPaint);
+                        if (j == 0) {
+                            inner.close();
                         }
                     } else if (i == 4) {
                         if (j == points.size() - 1) {
-                            lower.lineTo(point.x, point.y * mPhaseY);
+                            outer.lineTo(point.x, point.y * mPhaseY);
                         } else {
-                            CPoint prev = points.get(j - 1);
-                            lower.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
+                            CPoint prev = points.get(j + 1);
+                            outer.cubicTo(prev.x + prev.dx, (prev.y + prev.dy) * mPhaseY, point.x - point.dx,
                                     (point.y - point.dy) * mPhaseY, point.x, point.y * mPhaseY);
                         }
                         
-                        if (j == 1) {
-                            lower.lineTo(upperStart.x, upperStart.y);
-                            lower.close();
+                        if (j == 0) {
+                            outer.close();
                             mRenderPaint.setStyle(Paint.Style.FILL_AND_STROKE);
-                            mTrans.pathValueToPixel(lower);
-                            mDrawCanvas.drawPath(lower, mRenderPaint);
+                            mRenderPaint.setColor(Color.rgb(0xf0, 0xee, 0xd1));
+                            mTrans.pathValueToPixel(outer);
+                            mDrawCanvas.drawPath(outer, mRenderPaint);
+
+                            mRenderPaint.setColor(Color.rgb(0xa2, 0xe3, 0xc1));
+                            mTrans.pathValueToPixel(inner);
+                            mDrawCanvas.drawPath(inner, mRenderPaint);
+
+                            mRenderPaint.setStyle(Paint.Style.STROKE);
+                            PathEffect effect =
+                                    new DashPathEffect(new float[] { 8, 8, 8, 8 }, 1);
+                            mRenderPaint.setPathEffect(effect);
+                            mRenderPaint.setColor(Color.rgb(0x50, 0xe3, 0xc2));
+                            mTrans.pathValueToPixel(upperBorder);
+                            mDrawCanvas.drawPath(upperBorder, mRenderPaint);
+
+                            mRenderPaint.setColor(Color.rgb(0x50, 0xe3, 0xc2));
+                            mTrans.pathValueToPixel(lowerBorder);
+                            mDrawCanvas.drawPath(lowerBorder, mRenderPaint);
                         }
                     }
                 }
@@ -309,7 +293,7 @@ public class LineChart extends BarLineChartBase<LineData> {
 
         ArrayList<LineDataSet> dataSets = mData.getDataSets();
 
-        for (int i = 0; i < mData.getDataSetCount(); i++) {
+        for (int i = 0; i < 1; i++) {
 
             LineDataSet dataSet = dataSets.get(i);
             ArrayList<Entry> entries = dataSet.getYVals();

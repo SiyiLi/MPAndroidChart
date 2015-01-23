@@ -199,11 +199,11 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
         // 只画坐标区域内的东西
         mDrawCanvas.clipRect(mContentRect);
 
+        drawRefData();
+
         drawHorizontalGrid();
 
-        // drawVerticalGrid();
-
-        drawRefData();
+        drawVerticalGrid();
 
         // 虚函数，drawData in LineChart
         drawData();
