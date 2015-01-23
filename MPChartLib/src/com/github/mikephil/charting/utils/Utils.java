@@ -231,7 +231,7 @@ public abstract class Utils {
 
             // add decimal point
             if (charCount == digitCount) {
-                out[ind--] = ',';
+                out[ind--] = '.';
                 charCount++;
                 decimalPointAdded = true;
 

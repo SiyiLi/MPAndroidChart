@@ -97,6 +97,9 @@ public abstract class MarkerView extends RelativeLayout {
         this.mYOffset = y;
     }
 
+    public void setArrowPosition(int pos) {
+    }
+
     /**
      * returns the x-offset that is set for the MarkerView
      * 

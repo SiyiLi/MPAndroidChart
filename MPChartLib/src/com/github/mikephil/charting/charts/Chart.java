@@ -1026,7 +1026,10 @@ public abstract class Chart<T extends ChartData<? extends DataSet<? extends Entr
      * draws all MarkerViews on the highlighted positions
      */
     protected void drawMarkers() {
-
+        final int ARROW_LEFT_TOP = 0;
+        final int ARROW_RIGHT_TOP = 1;
+        final int ARROW_RIGHT_BOTTOM = 2;
+        final int ARROW_LEFT_BOTTOM = 3;
         // if there is no marker view or drawing marker is disabled
         if (mMarkerView == null || !mDrawMarkerViews || !valuesToHighlight())
             return;
@@ -1052,6 +1055,34 @@ public abstract class Chart<T extends ChartData<? extends DataSet<? extends Entr
                     continue;
 
                 // callbacks to update the content
+                // 在右边
+                float xOff = 0, yOff = 0;
+                if (pos[0] - mOffsetLeft > (getWidth() - mOffsetLeft - mOffsetRight) / 2) {
+                    xOff = -mMarkerView.getWidth();
+                    // 在下方
+                    if (pos[1] - mOffsetTop > (getHeight() - mOffsetTop - mOffsetBottom) / 2) {
+                        yOff = -mMarkerView.getHeight();
+                        // 箭头在右下方
+                        mMarkerView.setArrowPosition(ARROW_RIGHT_BOTTOM);
+                    } else { // 在上方
+                        yOff = 0;
+                        // 箭头在右上方
+                        mMarkerView.setArrowPosition(ARROW_RIGHT_TOP);
+                    }
+                } else { // 在左边
+                    xOff = 0;
+                    // 在下方
+                    if (pos[1] - mOffsetTop > (getHeight() - mOffsetTop - mOffsetBottom) / 2) {
+                        yOff = -mMarkerView.getHeight();
+                        // 箭头在左下方
+                        mMarkerView.setArrowPosition(ARROW_LEFT_BOTTOM);
+                    } else { // 在上方
+                        yOff = 0;
+                        // 箭头在左上方
+                        mMarkerView.setArrowPosition(ARROW_LEFT_TOP);
+                    }
+                }
+                mMarkerView.setOffsets(xOff, yOff);
                 mMarkerView.refreshContent(e, dataSetIndex);
 
                 mMarkerView.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
