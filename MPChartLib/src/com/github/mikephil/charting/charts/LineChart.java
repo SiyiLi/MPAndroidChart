@@ -730,6 +730,8 @@ public class LineChart extends BarLineChartBase<LineData> {
     }
     
     public synchronized void scaleYAdaptive() {
+        if (mDataNotSet)
+            return;
 
         int[] xRange = new int[] { 0, 0 };
         float[] yRange = new float[] { 0, 0 };
@@ -740,7 +742,6 @@ public class LineChart extends BarLineChartBase<LineData> {
         float maxY = yRange[1] + deltaY * 0.1f;
         float[] pts = new float[] { 0, maxY };
         mTrans.scaleYAdaptive(pts, scaleY, this);
-
     }
     
     protected boolean getYRangeInXRange(int [] xRange, float [] yRange) {
