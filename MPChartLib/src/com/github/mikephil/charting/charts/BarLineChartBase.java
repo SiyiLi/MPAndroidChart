@@ -199,14 +199,14 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
         // 只画坐标区域内的东西
         mDrawCanvas.clipRect(mContentRect);
 
-        drawRefData();
+        drawRefData(); // perf thief
 
         drawHorizontalGrid();
 
-        drawVerticalGrid();
+        drawVerticalGrid(); // perf thief
 
         // 虚函数，drawData in LineChart
-        drawData();
+        drawData(); // potential perf thief
 
         // 暂时不需要
         drawLimitLines();
@@ -1021,7 +1021,19 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
                 0f, 0f
         };
 
-        for (int i = 0; i < mData.getXValCount(); i += mXLabels.mXAxisLabelModulus) {
+        int[] xRange = { 0, 0 };
+        getXRangeInScreen(xRange);
+
+        int start = xRange[0] - 1;
+        if (start < 0)
+            start = 0;
+        int end = xRange[1] + 1;
+        if (end > mData.getXValCount() - 1)
+            end = mData.getXValCount() - 1;
+
+        for (int i = 0; i <= end; i += mXLabels.mXAxisLabelModulus) {
+            if (i < start)
+                continue;
 
             position[0] = i;
 
@@ -1212,6 +1224,12 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
      * @param y
      */
     public void zoom(float scaleX, float scaleY, float x, float y) {
+        float[] vals = new float[9];
+        mTrans.getTouchMatrix().getValues(vals);
+        float curScaleX = vals[Matrix.MSCALE_X];
+        float maxRelScaleX = mDeltaX / 2.1f / curScaleX;
+        if (scaleX > maxRelScaleX) // scaleX是相对值
+            scaleX = maxRelScaleX;
         Matrix save = mTrans.zoom(scaleX, scaleY, x, -y);
         mTrans.refresh(save, this);
     }

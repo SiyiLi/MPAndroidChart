@@ -239,6 +239,12 @@ public class BarLineChartTouchListener<T extends BarLineChartBase<? extends BarL
                                                         // scale
 
                     mMatrix.set(mSavedMatrix);
+                    float[] vals = new float[9];
+                    mSavedMatrix.getValues(vals);
+                    float curScaleX = vals[Matrix.MSCALE_X];
+                    float maxRelScaleX = mChart.getDeltaX() / 2.1f / curScaleX;
+                    if (scaleX > maxRelScaleX) // scaleX是相对值
+                        scaleX = maxRelScaleX;
                     mMatrix.postScale(scaleX, 1f, t.x, t.y);
 
                 } else if (mTouchMode == Y_ZOOM) {

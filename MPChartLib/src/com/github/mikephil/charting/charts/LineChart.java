@@ -143,6 +143,16 @@ public class LineChart extends BarLineChartBase<LineData> {
 
     @Override
     protected void drawRefData() {
+        int[] xRange = { 0, 0 };
+        getXRangeInScreen(xRange);
+
+        int start = xRange[0] - 31; // 两个ref data之间相差一个月
+        if (start < 0)
+            start = 0;
+        int end = xRange[1] + 31; // 所以在起始处分别多留一个月的margin
+        if (end > mData.getXValCount() - 1)
+            end = mData.getXValCount() - 1;
+
         ArrayList<LineDataSet> dataSets = mData.getDataSets();
 
         // the path for the cubic-spline
@@ -167,8 +177,11 @@ public class LineChart extends BarLineChartBase<LineData> {
             float intensity = dataSet.getCubicIntensity();
             
             ArrayList<CPoint> points = new ArrayList<CPoint>();
-            for (Entry e : entries)
-                points.add(new CPoint(e.getXIndex(), e.getVal()));
+            for (Entry e : entries) {
+                int tmpX = e.getXIndex();
+                if (tmpX <= end && tmpX >= start)
+                    points.add(new CPoint(tmpX, e.getVal()));
+            }
 
             if (points.size() > 1) {
                 for (int j = 0; j < points.size() * mPhaseX; j++) {
