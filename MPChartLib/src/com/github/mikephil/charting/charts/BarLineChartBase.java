@@ -589,6 +589,8 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
         } else {
 
             double first = Math.ceil(yMin / interval) * interval;
+            if (first > -0.00001 && first < 0.00001)
+                first = 0;
             double last = Utils.nextUp(Math.floor(yMax / interval) * interval);
 
             double f;
