@@ -4,10 +4,10 @@ package com.github.mikephil.charting.charts;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.DashPathEffect;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PathEffect;
+import android.graphics.PathMeasure;
 import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
@@ -145,6 +145,7 @@ public class LineChart extends BarLineChartBase<LineData> {
     protected void drawRefData() {
         int[] xRange = { 0, 0 };
         getXRangeInScreen(xRange);
+        int mid = (xRange[0] + xRange[1]) / 2;
 
         int start = xRange[0] - 31; // 两个ref data之间相差一个月
         if (start < 0)
@@ -152,6 +153,8 @@ public class LineChart extends BarLineChartBase<LineData> {
         int end = xRange[1] + 31; // 所以在起始处分别多留一个月的margin
         if (end > mData.getXValCount() - 1)
             end = mData.getXValCount() - 1;
+        int relStart = -1;
+        int relEnd = -1;
 
         ArrayList<LineDataSet> dataSets = mData.getDataSets();
 
@@ -179,8 +182,16 @@ public class LineChart extends BarLineChartBase<LineData> {
             ArrayList<CPoint> points = new ArrayList<CPoint>();
             for (Entry e : entries) {
                 int tmpX = e.getXIndex();
-                if (tmpX <= end && tmpX >= start)
+                if (tmpX < start) {
+                    continue;
+                } else if (tmpX <= end) {
+                    if (relStart == -1)
+                        relStart = tmpX;
                     points.add(new CPoint(tmpX, e.getVal()));
+                    relEnd = tmpX;
+                } else {
+                    break;
+                }
             }
 
             if (points.size() > 1) {
@@ -285,11 +296,47 @@ public class LineChart extends BarLineChartBase<LineData> {
                             mRenderPaint.setPathEffect(effect);
                             mRenderPaint.setColor(Color.rgb(0x50, 0xe3, 0xc2));
                             mTrans.pathValueToPixel(upperBorder);
-                            mDrawCanvas.drawPath(upperBorder, mRenderPaint);
+                            PathMeasure measure = new PathMeasure(upperBorder, false);
+                            // 要画的虚线长度最多为画布长宽之和
+                            float maxLen = mDrawCanvas.getWidth() + mDrawCanvas.getHeight();
+                            float length = measure.getLength(); // path中虚线的长度
+                            Path dstPath = new Path();
+                            if (maxLen < length) { // path中的虚线过长了，需要剪裁
+                                // 关键是要找到屏幕区域内的曲线的中心点
+                                float midSeg = length * (float) (mid - relStart)
+                                        / (float) (relEnd - relStart);
+                                float startSeg = midSeg - maxLen / 2f;
+                                if (startSeg < 0)
+                                    startSeg = 0;
+                                float endSeg = midSeg + maxLen / 2f;
+                                if (endSeg > length)
+                                    endSeg = length;
+                                measure.getSegment(startSeg, endSeg, dstPath, true);
+                            } else {
+                                dstPath = upperBorder;
+                            }
+                            mDrawCanvas.drawPath(dstPath, mRenderPaint);
 
                             mRenderPaint.setColor(Color.rgb(0x50, 0xe3, 0xc2));
                             mTrans.pathValueToPixel(lowerBorder);
-                            mDrawCanvas.drawPath(lowerBorder, mRenderPaint);
+                            measure.setPath(lowerBorder, false);
+                            length = measure.getLength(); // path中虚线的长度
+                            dstPath.reset();
+                            if (maxLen < length) { // path中的虚线过长了，需要剪裁
+                                // 注意这里是从右向左绘制
+                                float midSeg = length * (float) (relEnd - mid)
+                                        / (float) (relEnd - relStart);
+                                float startSeg = midSeg - maxLen / 2f;
+                                if (startSeg < 0)
+                                    startSeg = 0;
+                                float endSeg = midSeg + maxLen / 2f;
+                                if (endSeg > length)
+                                    endSeg = length;
+                                measure.getSegment(startSeg, endSeg, dstPath, true);
+                            } else {
+                                dstPath = lowerBorder;
+                            }
+                            mDrawCanvas.drawPath(dstPath, mRenderPaint);
                         }
                     }
                 }
