@@ -27,7 +27,6 @@ import com.github.mikephil.charting.utils.Legend.LegendPosition;
 import com.github.mikephil.charting.utils.LimitLine;
 import com.github.mikephil.charting.utils.LimitLine.LimitLabelPosition;
 import com.github.mikephil.charting.utils.PointD;
-import com.github.mikephil.charting.utils.SelInfo;
 import com.github.mikephil.charting.utils.Utils;
 import com.github.mikephil.charting.utils.XLabels;
 import com.github.mikephil.charting.utils.XLabels.XLabelPosition;
@@ -36,7 +35,6 @@ import com.github.mikephil.charting.utils.YLabels.YLabelPosition;
 
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Locale;
 
 /**
  * Base-class of LineChart, BarChart, ScatterChart and CandleStickChart.
@@ -1198,7 +1196,6 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
     public interface TouchCallback {
         void onDragOrScale();
     }
-    private TouchCallback mTouchCallback;
 
     /**
      * ################ ################ ################ ################
@@ -1691,7 +1688,6 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
      * @return
      */
     public Highlight getHighlightByTouchPoint(float x, float y) {
-
         if (mDataNotSet || mData == null) {
             Log.e(LOG_TAG, "Can't select by touch. No data set.");
             return null;
@@ -1699,64 +1695,47 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
 
         // create an array of the touch-point
         float[] pts = new float[2];
-        pts[0] = x;
-        pts[1] = y;
+        int xIndex = -1;
 
-        mTrans.pixelsToValue(pts);
-
-        double xTouchVal = pts[0];
-        double yTouchVal = pts[1];
-        double base = Math.floor(xTouchVal);
-
-        double touchOffset = mDeltaX * 0.025;
-        // Log.i(LOG_TAG, "touchindex x: " + xTouchVal + ", touchindex y: " +
-        // yTouchVal + ", offset: "
-        // + touchOffset);
-        // Toast.makeText(getContext(), "touchindex x: " + xTouchVal +
-        // ", touchindex y: " + yTouchVal + ", offset: " + touchOffset,
-        // Toast.LENGTH_SHORT).show();
-
-        // touch out of chart
-        if (xTouchVal < -touchOffset || xTouchVal > mDeltaX + touchOffset)
+        if (mData == null || mData.getDataSetByIndex(0) == null)
             return null;
 
-        if (this instanceof CandleStickChart)
-            base -= 0.5;
+        ArrayList<Entry> entries = (ArrayList<Entry>) mData.getDataSetByIndex(0).getYVals();
+        if (entries == null)
+            return null;
 
-        if (base < 0)
-            base = 0;
-        if (base >= mDeltaX)
-            base = mDeltaX - 1;
+        int[] xRange = { 0, 0 };
+        getXRangeInScreen(xRange);
 
-        int xIndex = (int) base;
+        int start = xRange[0] - 1;
+        if (start < 0)
+            start = 0;
+        int end = xRange[1] + 1;
+        if (end > mData.getXValCount() - 1)
+            end = mData.getXValCount() - 1;
 
-        int dataSetIndex = 0; // index of the DataSet inside the ChartData
-                              // object
+        double minDis = 3600;
+        for (Entry e : entries) {
+            pts[0] = e.getXIndex();
+            pts[1] = e.getVal();
+            if (pts[0] < start) {
+                continue;
+            } else if (pts[0] <= end) {
+                mTrans.pointValuesToPixel(pts);
+                double distance = (x - pts[0]) * (x - pts[0]) + (y - pts[1]) * (y - pts[1]);
+                if (distance < minDis) {
+                    minDis = distance;
+                    xIndex = e.getXIndex();
+                }
+            } else {
+                break;
+            }
 
-        // check if we are more than half of a x-value or not
-        if (xTouchVal - base > 0.5) {
-            xIndex = (int) base + 1;
         }
-
-        // 我们简单粗暴一点
-        //ArrayList<SelInfo> valsAtIndex = getYValsAtIndex(xIndex);
-
-        //dataSetIndex = Utils.getClosestDataSetIndex(valsAtIndex, (float) yTouchVal);
-        dataSetIndex = 0;
-
-        if (dataSetIndex == -1)
+        if (xIndex == -1)
             return null;
 
-        if (mData != null && mData.getDataSetByIndex(0) != null)
-            xIndex = mData.getDataSetByIndex(0).getNearestEntryForXIndex(xIndex).getXIndex();
-        else
-            return null;
-
-        // Toast.makeText(getContext(), "xindex: " + xIndex + ", dataSetIndex: "
-        // + dataSetIndex,
-        // Toast.LENGTH_SHORT).show();
-
-        return new Highlight(xIndex, dataSetIndex);
+        return new Highlight(xIndex, 0);
     }
 
     /**
