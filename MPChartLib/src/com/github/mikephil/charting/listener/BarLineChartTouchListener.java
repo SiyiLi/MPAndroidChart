@@ -12,6 +12,7 @@ import android.view.View;
 import android.view.View.OnTouchListener;
 
 import com.github.mikephil.charting.charts.BarLineChartBase;
+import com.github.mikephil.charting.charts.BarLineChartBase.TouchCallback;
 import com.github.mikephil.charting.data.BarLineScatterCandleData;
 import com.github.mikephil.charting.data.BarLineScatterCandleRadarDataSet;
 import com.github.mikephil.charting.data.Entry;
@@ -63,6 +64,8 @@ public class BarLineChartTouchListener<T extends BarLineChartBase<? extends BarL
 
     /** the gesturedetector used for detecting taps and longpresses, ... */
     private GestureDetector mGestureDetector;
+
+    private TouchCallback mTouchCallback;
 
     public BarLineChartTouchListener(T chart, Matrix start) {
         this.mChart = chart;
@@ -202,6 +205,7 @@ public class BarLineChartTouchListener<T extends BarLineChartBase<? extends BarL
             // Siyi: not allowed to be translated by user in Y
             mMatrix.postTranslate(dragPoint.x - mTouchStartPoint.x, 0);
         }
+        mTouchCallback.onDragOrScale();
     }
 
     /**
@@ -261,6 +265,7 @@ public class BarLineChartTouchListener<T extends BarLineChartBase<? extends BarL
                 }
             }
         }
+        mTouchCallback.onDragOrScale();
     }
 
     /**
@@ -376,6 +381,10 @@ public class BarLineChartTouchListener<T extends BarLineChartBase<? extends BarL
         return mTouchMode;
     }
 
+    public void setTouchCallback(TouchCallback cb) {
+        mTouchCallback = cb;
+    }
+
     @Override
     public boolean onDoubleTap(MotionEvent e) {
 
@@ -396,6 +405,7 @@ public class BarLineChartTouchListener<T extends BarLineChartBase<? extends BarL
             Log.i("BarlineChartTouch", "Double-Tap, Zooming In, x: " + trans.x + ", y: " + trans.y);
         }
 
+        mTouchCallback.onDragOrScale();
         return super.onDoubleTap(e);
     }
 

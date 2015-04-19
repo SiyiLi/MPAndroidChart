@@ -1195,6 +1195,11 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
             return mListener.onTouch(this, event);
     }
 
+    public interface TouchCallback {
+        void onDragOrScale();
+    }
+    private TouchCallback mTouchCallback;
+
     /**
      * ################ ################ ################ ################
      */
@@ -1302,6 +1307,10 @@ public abstract class BarLineChartBase<T extends BarLineScatterCandleData<? exte
      */
     public void setOnTouchListener(OnTouchListener l) {
         this.mListener = l;
+    }
+
+    public void setTouchCallback(TouchCallback cb) {
+        ((BarLineChartTouchListener)mListener).setTouchCallback(cb);
     }
 
     /**
