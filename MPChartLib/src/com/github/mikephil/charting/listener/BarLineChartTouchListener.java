@@ -408,8 +408,8 @@ public class BarLineChartTouchListener<T extends BarLineChartBase<? extends BarL
 
             l.onChartLongPressed(e);
         } else if (mTouchMode == NONE) {
-
-            mChart.fitScreen();
+            // 不响应长按事件
+            // mChart.fitScreen();
 
             Log.i("BarlineChartTouch",
                     "Longpress, resetting zoom and drag, adjusting chart bounds to screen.");

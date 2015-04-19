@@ -16,6 +16,7 @@ import android.view.MotionEvent;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.interfaces.ChartInterface;
 import com.github.mikephil.charting.utils.FillFormatter;
 
 import java.util.ArrayList;
@@ -773,12 +774,24 @@ public class LineChart extends BarLineChartBase<LineData> {
         float deltaY = yRange[1] - yRange[0];
         float maxY = yRange[1] + deltaY * 0.1f;
         
-        float scaleX = mDeltaX / num;
-        float scaleY = mDeltaY / (1.2f * deltaY);
+        final float scaleX = mDeltaX / num;
+        // float scaleY = mDeltaY / (1.2f * deltaY);
 
-        float[] pts = new float[] { (float) (i - num) + 0.5f, maxY };
+        // num * 0.15f表示：选中的点（最新的点）离视图的右边缘有15％的margin
+        final float[] pts = new float[] { (float) (i - num) + num * 0.15f, maxY };
+        final ChartInterface chart = this;
 
-        mTrans.showNPoints(pts, scaleX, scaleY, this);
+        // the post makes it possible that this call waits until the view has
+        // finisted setting up
+        post(new Runnable() {
+            @Override
+            public void run() {
+                // showNPoints不再scaleY，由scaleYAdaptive统一完成
+                // showNPoints只会更新matrix，不再刷新视图
+                mTrans.showNPoints(pts, scaleX, 1f, chart);
+                scaleYAdaptive();
+            }
+        });
 
     }
     

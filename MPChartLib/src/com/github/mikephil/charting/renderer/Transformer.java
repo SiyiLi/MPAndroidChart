@@ -400,63 +400,44 @@ public class Transformer {
 
     // Siyi: Based on centerViewPort
     public synchronized void showNPoints(final float[] pts, final float scaleX,
-                    final float scaleY,final ChartInterface chart) {
+                    final float scaleY, final ChartInterface chart) {
+        Matrix save = new Matrix();
+        save.set(mMatrixTouch);
 
-        final View v = chart.getChartView();
+        pointValuesToPixel(pts);
 
-        // the post makes it possible that this call waits until the view has
-        // finisted setting up
-        v.post(new Runnable() {
+        final float x = -pts[0] + chart.getOffsetLeft();
 
-            @Override
-            public void run() {
-                Matrix save = new Matrix();
-                save.set(mMatrixTouch);
+        save.postTranslate(x, 0);
 
-                pointValuesToPixel(pts);
+        float targetScaleX = scaleX / mScaleX;
+        float targetScaleY = scaleY / mScaleY;
+        save.postScale(targetScaleX, targetScaleY);
 
-                final float x = -pts[0] + chart.getOffsetLeft();
+        final float y = chart.getOffsetTop() - pts[1] * targetScaleY
+                + (targetScaleY - 1) * (chart.getHeight() - chart.getOffsetBottom());
 
-                save.postTranslate(x, 0);
-                
-                float targetScaleX = scaleX / mScaleX;
-                float targetScaleY = scaleY / mScaleY;
-                save.postScale(targetScaleX, targetScaleY);
+        save.postTranslate(0, y);
 
-                final float y = chart.getOffsetTop() - pts[1] * targetScaleY
-                        + (targetScaleY - 1) * (chart.getHeight() - chart.getOffsetBottom());
-
-                save.postTranslate(0, y);
-                
-                refresh(save, chart);
-            }
-        });
+        limitTransAndScale(save, chart.getContentRect());
+        mMatrixTouch.set(save);
     }
 
     public synchronized void scaleYAdaptive(final float[] pts, final float scaleY, final ChartInterface chart) {
+        Matrix save = new Matrix();
+        save.set(mMatrixTouch);
 
-        final View v = chart.getChartView();
+        pointValuesToPixel(pts);
 
-        v.post(new Runnable() {
+        float targetScaleY = scaleY / mScaleY;
 
-            @Override
-            public void run() {
-                Matrix save = new Matrix();
-                save.set(mMatrixTouch);
+        final float y = chart.getOffsetTop() - pts[1] * targetScaleY
+                + (targetScaleY - 1) * (chart.getHeight() - chart.getOffsetBottom());
 
-                pointValuesToPixel(pts);
-                
-                float targetScaleY = scaleY / mScaleY;
+        save.postScale(1f, scaleY / mScaleY);
+        save.postTranslate(0, y);
 
-                final float y = chart.getOffsetTop() - pts[1] * targetScaleY
-                        + (targetScaleY - 1) * (chart.getHeight() - chart.getOffsetBottom());
-
-                save.postScale(1f, scaleY / mScaleY);
-                save.postTranslate(0, y);
-
-                refresh(save, chart);
-            }
-        });
+        refresh(save, chart);
     }
     
     /**
